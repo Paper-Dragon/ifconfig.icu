@@ -1,11 +1,10 @@
-import uvicorn
-from fastapi import FastAPI, Header, Request
-from fastapi.staticfiles import StaticFiles
-
-import geoip2.database
-
 import logging
 import os
+
+import geoip2.database
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 
 # with geoip2.database.Reader('./GeoLite2-City.mmdb') as reader:
 #     response = reader.city('101.231.101.116')
@@ -13,23 +12,25 @@ import os
 #     print(response.city.names['zh-CN'])
 #     print(response.raw)
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s'
+)
 
 try:
     city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb').city
     country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb').country
 except TypeError:
-    logging.ERROR('Could not find MaxMind database\n')
+    logging.error('Could not find MaxMind database\n')
     exit(1)
-
 
 app = FastAPI(
     title="ifconfig.icu",
     version="beta 0.1"
 )
 
-
 app.mount("/static", app=StaticFiles(directory="./static"), name='static')
+
 
 # 若为代理模式需要完善这里
 def lookup_ip(request):
@@ -76,7 +77,7 @@ async def get_command(command: str, request: Request):
         # 获取查询参数
         "query_params": request.query_params
     }
-    
+
     match command:
         case "country":
             ip_address = lookup_ip(request)
@@ -91,7 +92,8 @@ async def get_command(command: str, request: Request):
             return request.headers
         case _:
             return lookup_ip(request)
-        
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
