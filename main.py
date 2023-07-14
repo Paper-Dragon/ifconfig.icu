@@ -5,7 +5,7 @@ import geoip2.database
 import uvicorn
 from fastapi import FastAPI, Request, Header, status, HTTPException
 from fastapi.staticfiles import StaticFiles
-
+import re
 from pydantic import BaseModel
 from enum import Enum
 
@@ -60,9 +60,30 @@ def get_country(ip_address):
     return reader
 
 
+def is_cli(request: Request):
+    user_agent = dict(request.headers).get('user-agent')
+    res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
+    if res is None:
+        return False
+    return res[0]
+
+
+def mk_cmd(cmd):
+    match cmd:
+        case "curl":
+            return "curl"
+        case ["wget", "Wget"]:
+            return "wget -qO -"
+        case "fetch slibfetch":
+            return "fetch -qo -"
+        case _:
+            return ""
+
+
 @app.get("/")
 def query_root(request: Request):
-    return lookup_ip(request)
+    print(is_cli(request))
+    return str(lookup_ip(request))
 
 
 @app.get("/{name}")
