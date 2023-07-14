@@ -1,25 +1,24 @@
+import json
 import logging
 import os
 
 import geoip2.database
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header
 from fastapi.staticfiles import StaticFiles
 
-# with geoip2.database.Reader('./GeoLite2-City.mmdb') as reader:
-#     response = reader.city('101.231.101.116')
-#     print(response.country.names['zh-CN'])
-#     print(response.city.names['zh-CN'])
-#     print(response.raw)
+from pydantic import BaseModel
+from enum import Enum
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s'
+    # format='%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s'
+    format='%(levelname)s:     %(name)s - %(message)s-%(funcName)s'
 )
 
 try:
-    city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb').city
-    country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb').country
+    city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
+    country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb')
 except TypeError:
     logging.error('Could not find MaxMind database\n')
     exit(1)
@@ -29,12 +28,13 @@ app = FastAPI(
     version="beta 0.1"
 )
 
+language = 'zh-CN'
+
 app.mount("/static", app=StaticFiles(directory="./static"), name='static')
 
 
 # 若为代理模式需要完善这里
 def lookup_ip(request):
-    res = ""
     match os.getenv("PROXY_MODE"):
         case True:
             res = request.client.host
@@ -43,53 +43,48 @@ def lookup_ip(request):
     return res
 
 
-@app.get("/{command}")
-async def get_command(command: str, request: Request):
-    res = {
-        # 客户端连接的 host
-        "host": request.client.host,
-        # 客户端连接的端口号
-        "port": request.client.port,
-        # 请求方法
-        "method": request.method,
-        # 请求路径
-        "base_url": request.base_url,
-        # request headers
-        "headers": request.headers,
-        # request cookies
-        "cookies": request.cookies,
-        # 请求 url
-        "url": request.url,
-        # 请求组成
-        "components": request.url.components,
-        # 请求协议
-        "scheme": request.url.scheme,
-        # 请求 host
-        "hostname": request.url.hostname,
-        # 请求端口
-        "url_port": request.url.port,
-        # 请求 path
-        "path": request.url.path,
-        # 请求查询参数
-        "query": request.url.query,
-        # 获取路径参数
-        "path_params": request.path_params,
-        # 获取查询参数
-        "query_params": request.query_params
-    }
+def get_city(ip_address):
+    try:
+        reader = city_db_reader.city(ip_address).city.names[language]
+    except Exception as e:
+        logging.error(e)
+        return f"I don't known Your City! The address {ip_address} is not in the database"
+    return reader
 
-    match command:
+
+def get_country(ip_address):
+    try:
+        reader = country_db_reader.country(ip_address).country.names[language]
+    except Exception as e:
+        logging.error(e)
+        return f"I don't known Your Country! The address {ip_address} is not in the database"
+    return reader
+
+
+@app.get("/{cli}")
+async def get_command(cli: str, request: Request):
+    match cli:
         case "country":
             ip_address = lookup_ip(request)
-            return ip_address
+            country = get_country(ip_address)
+            return country
         case "city":
             ip_address = lookup_ip(request)
-            reader = city_db_reader.names
-            return reader
+            city = get_city(ip_address)
+            return city
         case "ip-address":
-            return command
+            return cli
         case "all.json":
-            return request.headers
+            res = dict(request.headers)
+
+            # 删除可在Proxy模式下错误数据。
+            del res['host']
+
+            ip_address = lookup_ip(request)
+            res['ip-address'] = ip_address
+            res['city'] = get_city(ip_address)
+            res['country'] = get_country(ip_address)
+            return res
         case _:
             return lookup_ip(request)
 
@@ -101,5 +96,5 @@ if __name__ == "__main__":
         port=8000,
         log_level="info",
         reload=True,
-        workers=8
+        # workers=8
     )
