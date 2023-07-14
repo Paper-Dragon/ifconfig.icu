@@ -1,10 +1,9 @@
-import json
 import logging
 import os
 
 import geoip2.database
 import uvicorn
-from fastapi import FastAPI, Request, Header
+from fastapi import FastAPI, Request, Header, status, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel
@@ -13,7 +12,7 @@ from enum import Enum
 logging.basicConfig(
     level=logging.DEBUG,
     # format='%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s'
-    format='%(levelname)s:     %(name)s - %(message)s-%(funcName)s'
+    format='%(levelname)s:     %(name)s - %(message)s - %(funcName)s'
 )
 
 try:
@@ -91,7 +90,11 @@ async def custom_query(name: str, request: Request):
             res['country'] = get_country(ip_address)
             return res
         case _:
-            return lookup_ip(request)
+            if dict(request.headers).get(f"{name}"):
+                return dict(request.headers).get(f"{name}")
+            else:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found",
+                                    headers={"X-Error": "Error"})
 
 
 if __name__ == "__main__":
