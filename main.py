@@ -1,19 +1,18 @@
-import json
 import logging
 import os
 
 import geoip2.database
 import uvicorn
-from fastapi import FastAPI, Request, Header
+from fastapi import FastAPI, Request, Header, status, HTTPException
 from fastapi.staticfiles import StaticFiles
-
+import re
 from pydantic import BaseModel
 from enum import Enum
 
 logging.basicConfig(
     level=logging.DEBUG,
     # format='%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s'
-    format='%(levelname)s:     %(name)s - %(message)s-%(funcName)s'
+    format='%(levelname)s:     %(name)s - %(message)s - %(funcName)s'
 )
 
 try:
@@ -61,9 +60,30 @@ def get_country(ip_address):
     return reader
 
 
+def is_cli(request: Request):
+    user_agent = dict(request.headers).get('user-agent')
+    res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
+    if res is None:
+        return False
+    return res[0]
+
+
+def mk_cmd(cmd):
+    match cmd:
+        case "curl":
+            return "curl"
+        case ["wget", "Wget"]:
+            return "wget -qO -"
+        case "fetch slibfetch":
+            return "fetch -qo -"
+        case _:
+            return ""
+
+
 @app.get("/")
 def query_root(request: Request):
-    return lookup_ip(request)
+    print(is_cli(request))
+    return str(lookup_ip(request))
 
 
 @app.get("/{name}")
@@ -91,7 +111,11 @@ async def custom_query(name: str, request: Request):
             res['country'] = get_country(ip_address)
             return res
         case _:
-            return lookup_ip(request)
+            if dict(request.headers).get(f"{name}"):
+                return dict(request.headers).get(f"{name}")
+            else:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found",
+                                    headers={"X-Error": "Error"})
 
 
 if __name__ == "__main__":
