@@ -61,9 +61,14 @@ def get_country(ip_address):
     return reader
 
 
-@app.get("/{cli}")
-async def get_command(cli: str, request: Request):
-    match cli:
+@app.get("/")
+def query_root(request: Request):
+    return lookup_ip(request)
+
+
+@app.get("/{name}")
+async def custom_query(name: str, request: Request):
+    match name:
         case "country":
             ip_address = lookup_ip(request)
             country = get_country(ip_address)
@@ -73,7 +78,7 @@ async def get_command(cli: str, request: Request):
             city = get_city(ip_address)
             return city
         case "ip-address":
-            return cli
+            return lookup_ip(request)
         case "all.json":
             res = dict(request.headers)
 
