@@ -63,7 +63,7 @@ def get_country(ip_address):
 def is_cli(request: Request):
     user_agent = dict(request.headers).get('user-agent')
     res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
-    if res is None:
+    if len(res) == 0:
         return False
     return res[0]
 
