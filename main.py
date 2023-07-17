@@ -5,6 +5,8 @@ import geoip2.database
 import uvicorn
 from fastapi import FastAPI, Request, Header, status, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import PlainTextResponse
 import re
 from pydantic import BaseModel
 from enum import Enum
@@ -30,7 +32,7 @@ app = FastAPI(
 language = 'zh-CN'
 
 app.mount("/static", app=StaticFiles(directory="./static"), name='static')
-
+templates = Jinja2Templates(directory="templates")
 
 # 若为代理模式需要完善这里
 def lookup_ip(request):
@@ -81,9 +83,29 @@ def mk_cmd(cmd):
 
 
 @app.get("/")
-def query_root(request: Request):
-    print(is_cli(request))
-    return str(lookup_ip(request))
+def index(request: Request):
+    if is_cli(request):
+        return lookup_ip(request)
+    headers = dict(request.headers)
+
+    # 删除可在Proxy模式下错误数据。
+    del headers['host']
+
+    ip_address = lookup_ip(request)
+    headers['ip-address'] = ip_address
+    headers['city'] = get_city(ip_address)
+    headers['country'] = get_country(ip_address)
+    print(headers)
+    context = {}
+    context["cmd"] = is_cli(request)
+    context["cmd_with_options"] = mk_cmd(is_cli(request))
+    context["ip_address"] = ip_address
+    context["headers"] = headers
+    context["country"] = get_country(ip_address)
+    context["city"] = get_city(ip_address)
+    context["request"] = request
+    print(context)
+    return templates.TemplateResponse("index.html",context)
 
 
 @app.get("/{name}")
