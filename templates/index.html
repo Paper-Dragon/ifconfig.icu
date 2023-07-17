@@ -62,15 +62,15 @@
             }
         }
     </style>
-    <script>
-      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-      ga('create', 'UA-59641118-1', 'auto');
-      ga('send', 'pageview');
-    </script>
+{#    <script>#}
+{#      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){#}
+{#      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),#}
+{#      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)#}
+{#      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');#}
+{##}
+{#      ga('create', 'UA-59641118-1', 'auto');#}
+{#      ga('send', 'pageview');#}
+{#    </script>#}
 </head>
 <body>
 <a href="https://github.com/Paper-Dragon/ifconfig.icu" class="github-corner" aria-label="View source on GitHub">
@@ -106,24 +106,20 @@
             <td class="response">{{ ip_address }}</td>
         </tr>
         {% if headers %}
+
             {% for k,v in headers %}
                 <tr>
-                    <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu/{{ k | safe }}</code>
+                    <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu/{{ k }}</code>
                     </td>
-                    <td class="response">{{ v | safe }}</td>
+                    <td class="response">{{ v }}</td>
                 </tr>
             {% endfor %}
         {% endif %}
         <tr>
-            <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu/country</code></td>
-            <td>
-                <pre class="response">{{ country }}</pre>
-            </td>
-        </tr>
-        <tr>
             <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu/all.json</code></td>
             <td>
-                <pre class="response">{{ headers | safe | json_encode(pretty=true) }}</pre>
+{#                <pre class="response">{{ all | sefe | json_encode(pretty=true) }}</pre>#}
+                <pre class="response">{{ all | tojson(indent=4) }}</pre>
             </td>
         </tr>
         </tbody>
