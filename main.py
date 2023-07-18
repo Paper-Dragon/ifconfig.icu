@@ -22,7 +22,7 @@ app = FastAPI(
     version="beta 0.1"
 )
 
-language = 'zh-CN'
+language = 'en'
 
 app.mount("/static", app=StaticFiles(directory="./static"), name='static')
 templates = Jinja2Templates(directory="templates")
@@ -30,9 +30,9 @@ templates = Jinja2Templates(directory="templates")
 
 # 若为代理模式需要完善这里
 def lookup_ip(request):
-    match os.getenv("PROXY_MODE"):
+    match bool(os.getenv("PROXY_MODE")):
         case True:
-            res = request.client.remote_host
+            res = request.headers['x-forwarded-for']
         case _:
             res = request.client.host
     return res
