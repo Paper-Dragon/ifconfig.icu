@@ -14,8 +14,22 @@
             font-size: 12px;
         }
 
+        .pure-table {
+            overflow: hidden;
+        }
         .response {
             font-family: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+            width: auto;
+        }
+
+        .command {
+            width: auto;
+        }
+        table {
+            table-layout: fixed;
+            max-width: 100%;
+            width: 100%;
+            word-break: break-word;
         }
 
         .content {
@@ -96,7 +110,7 @@
     <table class="pure-table pure-table-bordered pure-table-striped">
         <thead>
         <tr>
-            <th style="width: 350px">Command</th>
+            <th style="width: auto">Command</th>
             <th>Response</th>
         </tr>
         </thead>
@@ -118,7 +132,6 @@
         <tr>
             <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu/all.json</code></td>
             <td>
-{#                <pre class="response">{{ all | sefe | json_encode(pretty=true) }}</pre>#}
                 <pre class="response">{{ all | tojson(indent=4) }}</pre>
             </td>
         </tr>
