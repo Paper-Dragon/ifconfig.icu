@@ -42,7 +42,7 @@ def get_city(ip_address):
     try:
         reader = city_db_reader.city(ip_address).city.names[language]
     except Exception as e:
-        logging.error(e)
+        logging.error(f"没找到这种语言 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
         return f"The address {ip_address} is not in the database!"
     return reader
 
@@ -51,15 +51,21 @@ def get_country(ip_address):
     try:
         reader = country_db_reader.country(ip_address).country.names[language]
     except Exception as e:
-        logging.error(e)
+        logging.error(f"没找到这种语言 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
         return f" The address {ip_address} is not in the database!"
     return reader
 
 
 def is_cli(request: Request):
-    user_agent = dict(request.headers).get('user-agent')
-    res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
+    res = ""
+    user_agent = ""
+    try:
+        user_agent = dict(request.headers).get('user-agent')
+        res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
+    except Exception as e:
+        logging.debug(f"这吊毛我分析不了，不是字符串。他是 -> {str(user_agent)} 报错信息是 ->{e}")
     if len(res) == 0:
+        logging.debug("这吊毛没有user-agent")
         return False
     return res[0]
 
