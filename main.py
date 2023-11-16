@@ -42,7 +42,7 @@ def get_city(ip_address):
     try:
         reader = city_db_reader.city(ip_address).city.names[language]
     except Exception as e:
-        logging.error(f"没找到这种语言 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
+        logging.error(f"没找到这种语言的城市 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
         return f"The address {ip_address} is not in the database!"
     return reader
 
@@ -51,7 +51,7 @@ def get_country(ip_address):
     try:
         reader = country_db_reader.country(ip_address).country.names[language]
     except Exception as e:
-        logging.error(f"没找到这种语言 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
+        logging.error(f"没找到这种语言的国家 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
         return f" The address {ip_address} is not in the database!"
     return reader
 
