@@ -5,7 +5,7 @@ on:
 
   push:
     branches:
-      - 'master_python'
+      - 'master'
 
 jobs:
   admin-build:
