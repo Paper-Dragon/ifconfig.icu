@@ -1,4 +1,0 @@
-fastapi
-uvicorn
-geoip2
-jinja2

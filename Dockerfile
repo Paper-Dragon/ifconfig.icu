@@ -4,7 +4,7 @@ MAINTAINER <PaperDragon&&2678885646@qq.com>
 WORKDIR /app
 COPY . /app
 
-RUN pip install -r requirments.txt
+RUN pip install -r requirements.txt
 
 EXPOSE 8000
 CMD ["sh", "-c", "python main.py"]
