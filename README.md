@@ -13,6 +13,18 @@ Supported ways:
 - wget 
 - fetch
 
+## How to run ifconfig.icu server?
+
+```bash
+docker run -it \
+	-d \
+	--restart always \
+	-p 8000:8000 \
+	jockerdragon/ifconfig.icu:latest
+```
+
+
+
 ## contribute
 
 Rewrite the [ifconfig.top](https://github.com/ngoduykhanh/ifconfig.top.git) project using Python.
