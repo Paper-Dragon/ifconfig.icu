@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+geoip2==4.8.0
+jinja2
