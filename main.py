@@ -7,6 +7,7 @@ import geoip2.database
 import uvicorn
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 
@@ -19,7 +20,7 @@ except TypeError:
 
 app = FastAPI(
     title="ifconfig.icu",
-    version="beta 0.1"
+    version="beta 0.2"
 )
 
 language = 'en'
@@ -100,7 +101,7 @@ def pretty_head(request: Request) -> dict:
 def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
     if is_cli(request):
-        return ip_address
+        return PlainTextResponse(ip_address)
     headers_tuple = [(key, value) for key, value in pretty_head(request).items()]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
@@ -122,13 +123,14 @@ async def custom_query(name: str, request: Request):
         case "country":
             ip_address = lookup_ip(request)
             country = get_country(ip_address)
-            return country
+            return PlainTextResponse(country)
         case "city":
             ip_address = lookup_ip(request)
             city = get_city(ip_address)
-            return city
+            return PlainTextResponse(city)
         case "ip-address":
-            return lookup_ip(request)
+            print(lookup_ip(request))
+            return PlainTextResponse(lookup_ip(request))
         case "all.json":
             return pretty_head(request)
         case _:
