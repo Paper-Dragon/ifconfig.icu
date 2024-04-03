@@ -4,7 +4,6 @@ from typing import Optional
 import re
 
 import geoip2.database
-import uvicorn
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
@@ -141,11 +140,11 @@ async def custom_query(name: str, request: Request):
                                     headers={"X-Error": "Error"})
 
 
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        log_level="info",
-        reload=True
-    )
+# if __name__ == "__main__":
+#     uvicorn.run(
+#         "main:app",
+#         host="0.0.0.0",
+#         port=8000,
+#         log_level="info",
+#         reload=True
+#     )
