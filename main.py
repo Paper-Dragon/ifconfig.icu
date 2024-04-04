@@ -35,7 +35,7 @@ templates = Jinja2Templates(directory="templates")
 def lookup_ip(request):
     match bool(os.getenv("PROXY_MODE")):
         case True:
-            res = request.headers['x-forwarded-for'][0]
+            res = request.headers['x-forwarded-for'].split(',')[0].strip()
             if DEBUG:
                 print(f"In Proxy Mode, res is {res}")
         case _:
