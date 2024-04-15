@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Optional
 import re
+import ipaddress
 
 import geoip2.database
 import uvicorn
@@ -9,7 +10,7 @@ from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
 from fastapi.templating import Jinja2Templates
-
+from fastapi.datastructures import Headers
 
 try:
     city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
@@ -74,7 +75,7 @@ def is_cli(request: Request):
     except Exception as e:
         logging.debug(f"这吊毛我分析不了，不是字符串。他是 -> {str(user_agent)} 报错信息是 ->{e}")
     if len(res) == 0:
-        logging.debug("这吊毛没有user-agent")
+        logging.debug(f"这吊毛是个黑户没有UA，他的信息是 -> {request.headers} 记录在案。")
         return False
     return res[0]
 
@@ -108,9 +109,13 @@ def pretty_head(request: Request) -> dict:
 @app.get("/")
 def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
+    country = get_country(ip_address)
+    city = get_city(ip_address)
     if is_cli(request):
-        return PlainTextResponse(ip_address)
-    headers_tuple = [(key, value) for key, value in pretty_head(request).items()]
+        plain_res = f"ip address: {ip_address} \ncountry: {country} \ncity: {city}"
+        return PlainTextResponse(f"{plain_res}\n")
+    headers_tuple = [(key, value)
+                     for key, value in pretty_head(request).items()]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
@@ -118,29 +123,58 @@ def index(request: Request, cmd: Optional[str] = "curl"):
         "cmd_with_options": mk_cmd(cmd),
         "ip_address": ip_address,
         "headers": headers_tuple,
-        "country": get_country(ip_address),
-        "city": get_city(ip_address),
+        "country": country,
+        "city": city,
         "request": request
     }
     return templates.TemplateResponse("index.html", context)
 
 
+def is_valid_ip(ip_address: str):
+    try:
+        ip_obj = ipaddress.ip_address(ip_address)
+        return ip_obj.version == 4 or ip_obj.version == 6
+    except ValueError:
+        return False
+
+
 @app.get("/{name}")
-async def custom_query(name: str, request: Request):
+async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl"):
     match name:
         case "country":
             ip_address = lookup_ip(request)
             country = get_country(ip_address)
-            return PlainTextResponse(country)
+            return PlainTextResponse(f"{country}\n")
         case "city":
             ip_address = lookup_ip(request)
             city = get_city(ip_address)
-            return PlainTextResponse(city)
+            return PlainTextResponse(f"{city}\n")
         case "ip-address":
             print(lookup_ip(request))
-            return PlainTextResponse(lookup_ip(request))
+            return PlainTextResponse(f"{lookup_ip(request)}\n")
         case "all.json":
             return pretty_head(request)
+        case ip_address if is_valid_ip(ip_address):
+            country = get_country(ip_address)
+            city = get_city(ip_address)
+            if is_cli(request):
+                plain_res = f"ip address: {ip_address} \ncountry: {country} \ncity: {city}"
+                return PlainTextResponse(f"{plain_res}\n")
+
+            headers_tuple = [(key, f"{get_city(ip_address)}") if key == "city" else (
+                key, f"{get_country(ip_address)}") if key == "country" else (key, value) for key, value in pretty_head(request).items()]
+            headers_json = {key: value for key, value in headers_tuple}
+            context = {
+                "all": headers_json,
+                "cmd": is_cli(request),
+                "cmd_with_options": mk_cmd(cmd),
+                "ip_address": ip_address,
+                "headers": headers_tuple,
+                "country": country,
+                "city": city,
+                "request": request
+            }
+            return templates.TemplateResponse("index.html", context)
         case _:
             if dict(request.headers).get(f"{name}"):
                 return dict(request.headers).get(f"{name}")

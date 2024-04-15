@@ -13,6 +13,17 @@ Supported ways:
 - wget 
 - fetch
 
+### New features
+- 2024/04/03 migrate web to Koyeb ,Begin support IPv6
+- 2024/04/15 add manual check feature
+  > ```bash 
+  >  curl ifconfig.icu/101.231.100.xx
+  >  curl ifconfig.icu/2400:8902::f03c:94ff:fe42:xxxx
+  >  ```
+  > https://ifconfig.icu/xxx.xxx.xxx.xxx
+- 2024/04/15 Beautify command line result 
+
+
 ## How to run ifconfig.icu server?
 
 ```bash
