@@ -8,9 +8,8 @@ import geoip2.database
 import uvicorn
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.datastructures import Headers
 
 try:
     city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
@@ -62,7 +61,7 @@ def get_country(ip_address):
         reader = country_db_reader.country(ip_address).country.names[language]
     except Exception as e:
         logging.error(f"没找到这种语言的国家 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
-        return f" The address {ip_address} is not in the database!"
+        return f"The address {ip_address} is not in the database!"
     return reader
 
 
@@ -92,30 +91,18 @@ def mk_cmd(cmd):
             return "curl"
 
 
-def pretty_head(request: Request) -> dict:
-    headers = dict(request.headers)
-    ip_address = lookup_ip(request)
-
-    # 删除可在Proxy模式下错误数据。
-    del headers['host']
-
-    headers['city'] = get_city(ip_address)
-    headers['country'] = get_country(ip_address)
-    headers_tuple = [(key, value) for key, value in headers.items()]
-    headers_json = {key: value for key, value in headers_tuple}
-    return headers_json
-
-
 @app.get("/")
 def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
     country = get_country(ip_address)
     city = get_city(ip_address)
     if is_cli(request):
-        plain_res = f"ip address: {ip_address} \ncountry: {country} \ncity: {city}"
+        plain_res = (f"\nip address: {ip_address} \n"
+                     f"country: {country} \n"
+                     f"city: {city} \n"
+                     f"url: https://ifconfig.icu/{ip_address}\n")
         return PlainTextResponse(f"{plain_res}\n")
-    headers_tuple = [(key, value)
-                     for key, value in pretty_head(request).items()]
+    headers_tuple = request.headers.items() + [("city", city), ("country", country)]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
@@ -141,28 +128,17 @@ def is_valid_ip(ip_address: str):
 @app.get("/{name}")
 async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl"):
     match name:
-        case "country":
-            ip_address = lookup_ip(request)
-            country = get_country(ip_address)
-            return PlainTextResponse(f"{country}\n")
-        case "city":
-            ip_address = lookup_ip(request)
-            city = get_city(ip_address)
-            return PlainTextResponse(f"{city}\n")
-        case "ip-address":
-            print(lookup_ip(request))
-            return PlainTextResponse(f"{lookup_ip(request)}\n")
-        case "all.json":
-            return pretty_head(request)
         case ip_address if is_valid_ip(ip_address):
             country = get_country(ip_address)
             city = get_city(ip_address)
             if is_cli(request):
-                plain_res = f"ip address: {ip_address} \ncountry: {country} \ncity: {city}"
+                plain_res = (f"\nip address: {ip_address} \n"
+                             f"country: {country} \n"
+                             f"city: {city} \n"
+                             f"url: https://ifconfig.icu/{ip_address}\n")
                 return PlainTextResponse(f"{plain_res}\n")
 
-            headers_tuple = [(key, f"{get_city(ip_address)}") if key == "city" else (
-                key, f"{get_country(ip_address)}") if key == "country" else (key, value) for key, value in pretty_head(request).items()]
+            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
             headers_json = {key: value for key, value in headers_tuple}
             context = {
                 "all": headers_json,
@@ -175,6 +151,19 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
                 "request": request
             }
             return templates.TemplateResponse("index.html", context)
+    ip_address = lookup_ip(request)
+    country = get_country(ip_address)
+    city = get_city(ip_address)
+    match name: 
+        case "country":
+            return PlainTextResponse(f"{country}\n")
+        case "city":
+            return PlainTextResponse(f"{city}\n")
+        case "ip-address":
+            return PlainTextResponse(f"{ip_address}\n")
+        case "all.json":
+            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+            return JSONResponse({key: value for key, value in headers_tuple})
         case _:
             if dict(request.headers).get(f"{name}"):
                 return dict(request.headers).get(f"{name}")

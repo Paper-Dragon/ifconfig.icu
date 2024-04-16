@@ -22,6 +22,7 @@ Supported ways:
   >  ```
   > https://ifconfig.icu/xxx.xxx.xxx.xxx
 - 2024/04/15 Beautify command line result 
+- 2024/04/16 Code refactoring: use build item function delete pretty head, beautify command line, fixed log print error
 
 
 ## How to run ifconfig.icu server?
