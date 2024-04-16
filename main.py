@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+
 try:
     city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
     country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb')
@@ -96,18 +97,19 @@ def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
     country = get_country(ip_address)
     city = get_city(ip_address)
-    if is_cli(request):
-        plain_res = (f"\nip address: {ip_address} \n"
+    plain_res = (f"\nip address: {ip_address} \n"
                      f"country: {country} \n"
                      f"city: {city} \n"
-                     f"url: https://ifconfig.icu/{ip_address}\n")
+                     f"url: https://ifconfig.icu/{ip_address} \n")
+    if is_cli(request):
         return PlainTextResponse(f"{plain_res}\n")
-    headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+    headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
         "cmd": is_cli(request),
         "cmd_with_options": mk_cmd(cmd),
+        "plain_res": plain_res.replace("\n", "<br>"),
         "ip_address": ip_address,
         "headers": headers_tuple,
         "country": country,
@@ -131,19 +133,19 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
         case ip_address if is_valid_ip(ip_address):
             country = get_country(ip_address)
             city = get_city(ip_address)
-            if is_cli(request):
-                plain_res = (f"\nip address: {ip_address} \n"
+            plain_res = (f"\nip address: {ip_address} \n"
                              f"country: {country} \n"
                              f"city: {city} \n"
                              f"url: https://ifconfig.icu/{ip_address}\n")
+            if is_cli(request):
                 return PlainTextResponse(f"{plain_res}\n")
-
-            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+            headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
             headers_json = {key: value for key, value in headers_tuple}
             context = {
                 "all": headers_json,
                 "cmd": is_cli(request),
                 "cmd_with_options": mk_cmd(cmd),
+                "plain_res": plain_res.replace("\n", "<br>"),
                 "ip_address": ip_address,
                 "headers": headers_tuple,
                 "country": country,
