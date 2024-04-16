@@ -161,7 +161,7 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
             return PlainTextResponse(f"{country}\n")
         case "city":
             return PlainTextResponse(f"{city}\n")
-        case "ip-address":
+        case "ip":
             return PlainTextResponse(f"{ip_address}\n")
         case "all.json":
             headers_tuple = request.headers.items() + [("city", city), ("country", country)]
