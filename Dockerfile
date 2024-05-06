@@ -1,4 +1,4 @@
-FROM python:3.10.12-alpine3.17
+FROM python:3.12.3-alpine3.18
 MAINTAINER <PaperDragon&&2678885646@qq.com>
 
 WORKDIR /app
