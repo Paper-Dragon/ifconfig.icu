@@ -3,5 +3,5 @@ main = "main.py"
 compatibility_flags = ["python_workers"]
 compatibility_date = "2024-04-03"
 
-# [vars]
+[vars]
 # MESSAGE = "This is an environment variable"

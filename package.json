@@ -5,9 +5,10 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "update": "pnpm dlx vp-update"
   },
   "devDependencies": {
-    "wrangler": "^3.50.0"
+    "wrangler": "^3.53.1"
   }
 }
