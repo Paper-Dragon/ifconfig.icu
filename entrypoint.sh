@@ -1,4 +1,4 @@
-if [ "$agent" = "true" ]; then
+if [ "$agent" = "True" ]; then
     # 如果环境变量不为false，则执行更新和安装操作
     apk update && apk add --no-cache curl && rm -vrf /var/cache/apk/*
     
