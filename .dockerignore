@@ -1,0 +1,11 @@
+*.md
+Dockerfile
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.wrangle
+.github
+tools
