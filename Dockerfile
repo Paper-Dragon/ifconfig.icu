@@ -7,4 +7,4 @@ RUN chmod +x entrypoint.sh
 RUN pip install -r requirements.txt
 
 EXPOSE 8000
-CMD ["sh", "-c", "entrypoint.sh"]
+CMD ["sh", "/app/entrypoint.sh"]
