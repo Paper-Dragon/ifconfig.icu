@@ -35,7 +35,10 @@ docker run -it \
 	jockerdragon/ifconfig.icu:latest
 ```
 
+## Config Server
+`PROXY_MODE`: Default `None`, if set `PROXY_MODE=True` in env, Get the source IP instead of the last IP forwarded as your IP address. (before the first forward ip).
 
+`AGENT_MODE`: Default `None`, DO NOT SET THIS ENV, For the author's personal use only.
 
 ## contribute
 
