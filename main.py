@@ -2,11 +2,12 @@ import logging
 import os
 from typing import Optional
 import re
+import ipaddress
 
 import geoip2.database
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 
@@ -24,17 +25,25 @@ app = FastAPI(
 
 language = 'en'
 
+DEBUG_MODE = bool(os.getenv("DEBUG"))
+PROXY_MODE = bool(os.getenv("PROXY_MODE"))
+
+
 app.mount("/static", app=StaticFiles(directory="./static"), name='static')
 templates = Jinja2Templates(directory="templates")
 
 
 # 若为代理模式需要完善这里
 def lookup_ip(request):
-    match bool(os.getenv("PROXY_MODE")):
+    match PROXY_MODE:
         case True:
-            res = request.headers['x-forwarded-for']
+            res = request.headers['x-forwarded-for'].split(',')[0].strip()
+            if DEBUG_MODE:
+                print(f"In Proxy Mode, res is {res}")
         case _:
             res = request.client.host
+            if DEBUG_MODE:
+                print(f"In None Proxy Mode, res is {res}")
     return res
 
 
@@ -52,7 +61,7 @@ def get_country(ip_address):
         reader = country_db_reader.country(ip_address).country.names[language]
     except Exception as e:
         logging.error(f"没找到这种语言的国家 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
-        return f" The address {ip_address} is not in the database!"
+        return f"The address {ip_address} is not in the database!"
     return reader
 
 
@@ -65,7 +74,7 @@ def is_cli(request: Request):
     except Exception as e:
         logging.debug(f"这吊毛我分析不了，不是字符串。他是 -> {str(user_agent)} 报错信息是 ->{e}")
     if len(res) == 0:
-        logging.debug("这吊毛没有user-agent")
+        logging.debug(f"这吊毛是个黑户没有UA，他的信息是 -> {request.headers} 记录在案。")
         return False
     return res[0]
 
@@ -82,56 +91,80 @@ def mk_cmd(cmd):
             return "curl"
 
 
-def pretty_head(request: Request) -> dict:
-    headers = dict(request.headers)
-    ip_address = lookup_ip(request)
-
-    # 删除可在Proxy模式下错误数据。
-    del headers['host']
-
-    headers['city'] = get_city(ip_address)
-    headers['country'] = get_country(ip_address)
-    headers_tuple = [(key, value) for key, value in headers.items()]
-    headers_json = {key: value for key, value in headers_tuple}
-    return headers_json
-
-
 @app.get("/")
 def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
+    country = get_country(ip_address)
+    city = get_city(ip_address)
+    plain_res = (f"\nip address: {ip_address} \n"
+                     f"country: {country} \n"
+                     f"city: {city} \n"
+                     f"url: https://ifconfig.icu/{ip_address} \n")
     if is_cli(request):
-        return PlainTextResponse(ip_address)
-    headers_tuple = [(key, value) for key, value in pretty_head(request).items()]
+        return PlainTextResponse(f"{plain_res}\n")
+    headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
         "cmd": is_cli(request),
         "cmd_with_options": mk_cmd(cmd),
+        "plain_res": plain_res.replace("\n", "<br>"),
         "ip_address": ip_address,
         "headers": headers_tuple,
-        "country": get_country(ip_address),
-        "city": get_city(ip_address),
+        "country": country,
+        "city": city,
         "request": request
     }
     return templates.TemplateResponse("index.html", context)
 
 
+def is_valid_ip(ip_address: str):
+    try:
+        ip_obj = ipaddress.ip_address(ip_address)
+        return ip_obj.version == 4 or ip_obj.version == 6
+    except ValueError:
+        return False
+
+
 @app.get("/{name}")
-async def custom_query(name: str, request: Request):
+async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl"):
     match name:
-        case "country":
-            ip_address = lookup_ip(request)
+        case ip_address if is_valid_ip(ip_address):
             country = get_country(ip_address)
-            return PlainTextResponse(country)
-        case "city":
-            ip_address = lookup_ip(request)
             city = get_city(ip_address)
-            return PlainTextResponse(city)
-        case "ip-address":
-            print(lookup_ip(request))
-            return PlainTextResponse(lookup_ip(request))
+            plain_res = (f"\nip address: {ip_address} \n"
+                             f"country: {country} \n"
+                             f"city: {city} \n"
+                             f"url: https://ifconfig.icu/{ip_address}\n")
+            if is_cli(request):
+                return PlainTextResponse(f"{plain_res}\n")
+            headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
+            headers_json = {key: value for key, value in headers_tuple}
+            context = {
+                "all": headers_json,
+                "cmd": is_cli(request),
+                "cmd_with_options": mk_cmd(cmd),
+                "plain_res": plain_res.replace("\n", "<br>"),
+                "ip_address": ip_address,
+                "headers": headers_tuple,
+                "country": country,
+                "city": city,
+                "request": request
+            }
+            return templates.TemplateResponse("index.html", context)
+    ip_address = lookup_ip(request)
+    country = get_country(ip_address)
+    city = get_city(ip_address)
+    match name: 
+        case "country":
+            return PlainTextResponse(f"{country}\n")
+        case "city":
+            return PlainTextResponse(f"{city}\n")
+        case "ip":
+            return PlainTextResponse(f"{ip_address}\n")
         case "all.json":
-            return pretty_head(request)
+            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+            return JSONResponse({key: value for key, value in headers_tuple})
         case _:
             if dict(request.headers).get(f"{name}"):
                 return dict(request.headers).get(f"{name}")
