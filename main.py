@@ -57,15 +57,9 @@ def get_geo_info(ip_address, record_type):
             geo_info = country_db_reader.country(ip_address).country.names[language]
         else:
             raise ValueError(f"Unsupported record type: {record_type}")
-    except geoip2.errors.AddressNotFoundError:
-        logger.error(f"{record_type.capitalize()} information not found for IP {ip_address}, language {language}")
-        return f"The address {ip_address} is not in the {record_type} database."
-    except KeyError as ke:
-        logger.error(f"Language key error for {record_type} lookup: {ke}, IP {ip_address}, language {language}")
-        return f"Language key error during {record_type} lookup for IP {ip_address}."
     except Exception as e:
-        logger.exception(f"Unexpected error during {record_type} lookup for IP {ip_address}, error: {e}")
-        return f"An unexpected error occurred while looking up the {record_type} for IP {ip_address}."
+        logger.error(f"APP: Error looking up {record_type} for IP {ip_address}: {e}")
+        return f"Unable to retrieve the {record_type} information for the provided IP address. Please try again later or contact support if the issue persists."
     return geo_info
 
 
