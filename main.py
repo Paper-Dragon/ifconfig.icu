@@ -3,7 +3,6 @@ import os
 from typing import Optional
 import re
 import ipaddress
-
 import geoip2.database
 import uvicorn
 from fastapi import FastAPI, Request, status, HTTPException
@@ -11,12 +10,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+logger = logging.getLogger("uvicorn.error")
 
 try:
     city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
     country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb')
 except TypeError:
-    logging.error('Could not find MaxMind database\n')
+    logger.error('APP: Could not find MaxMind database\n')
     exit(1)
 
 app = FastAPI(
@@ -35,49 +35,49 @@ templates = Jinja2Templates(directory="templates")
 
 
 # 若为代理模式需要完善这里
-def lookup_ip(request):
-    match PROXY_MODE:
-        case True:
-            res = request.headers['x-forwarded-for'].split(',')[0].strip()
-            if DEBUG_MODE:
-                print(f"In Proxy Mode, res is {res}")
-        case _:
-            res = request.client.host
-            if DEBUG_MODE:
-                print(f"In None Proxy Mode, res is {res}")
+def lookup_ip(request: Request):
+    if PROXY_MODE:
+        res = request.headers.get('x-forwarded-for', "").split(',')[0].strip()
+        logger.debug(f"APP: In Proxy Mode, resolved IP is {res}")
+    else:
+        client_info = getattr(request.client, "host", None)
+        if client_info is not None:
+            res = client_info
+            logger.debug(f"APP: In Non-Proxy Mode, resolved IP is {client_info}")
+        else:
+            logger.warning("APP: Client host information not available; defaulting to 'Unknown'.")
+            res = "Unknown"
     return res
 
-
-def get_city(ip_address):
+def get_geo_info(ip_address, record_type):
     try:
-        reader = city_db_reader.city(ip_address).city.names[language]
+        if record_type == 'city':
+            geo_info = city_db_reader.city(ip_address).city.names[language]
+        elif record_type == 'country':
+            geo_info = country_db_reader.country(ip_address).country.names[language]
+        else:
+            raise ValueError(f"Unsupported record type: {record_type}")
+    except geoip2.errors.AddressNotFoundError:
+        logger.error(f"{record_type.capitalize()} information not found for IP {ip_address}, language {language}")
+        return f"The address {ip_address} is not in the {record_type} database."
+    except KeyError as ke:
+        logger.error(f"Language key error for {record_type} lookup: {ke}, IP {ip_address}, language {language}")
+        return f"Language key error during {record_type} lookup for IP {ip_address}."
     except Exception as e:
-        logging.error(f"没找到这种语言的城市 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
-        return f"The address {ip_address} is not in the database!"
-    return reader
-
-
-def get_country(ip_address):
-    try:
-        reader = country_db_reader.country(ip_address).country.names[language]
-    except Exception as e:
-        logging.error(f"没找到这种语言的国家 {language} 报错是{e} 现在正在查询的地址是{ip_address}")
-        return f"The address {ip_address} is not in the database!"
-    return reader
+        logger.exception(f"Unexpected error during {record_type} lookup for IP {ip_address}, error: {e}")
+        return f"An unexpected error occurred while looking up the {record_type} for IP {ip_address}."
+    return geo_info
 
 
 def is_cli(request: Request):
-    res = ""
-    user_agent = ""
-    try:
-        user_agent = dict(request.headers).get('user-agent')
-        res = re.findall(r"(curl|wget|Wget|fetch slibfetch)", user_agent)
-    except Exception as e:
-        logging.debug(f"这吊毛我分析不了，不是字符串。他是 -> {str(user_agent)} 报错信息是 ->{e}")
-    if len(res) == 0:
-        logging.debug(f"这吊毛是个黑户没有UA，他的信息是 -> {request.headers} 记录在案。")
-        return False
-    return res[0]
+    user_agent = request.headers.get('user-agent', "")
+    cli_patterns = r"(curl|wget|Wget|fetch slibfetch)"
+    match = re.search(cli_patterns, user_agent, re.IGNORECASE)
+    if match:
+        logger.debug(f"APP: Detected CLI: {match.group()}")
+        return match.group()
+    logger.debug(f"APP: No recognizable CLI detected in User-Agent: {user_agent}")
+    return False
 
 
 def mk_cmd(cmd):
@@ -95,15 +95,16 @@ def mk_cmd(cmd):
 @app.get("/")
 def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
-    country = get_country(ip_address)
-    city = get_city(ip_address)
+    country = get_geo_info(ip_address, 'country')
+    city = get_geo_info(ip_address, 'city')
     plain_res = (f"\nip address: {ip_address} \n"
-                     f"country: {country} \n"
-                     f"city: {city} \n"
-                     f"url: https://ifconfig.icu/{ip_address} \n")
+                 f"country: {country} \n"
+                 f"city: {city} \n"
+                 f"url: https://ifconfig.icu/{ip_address} \n")
     if is_cli(request):
         return PlainTextResponse(f"{plain_res}\n")
-    headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
+    headers_tuple = request.headers.items(
+    ) + [("city", city), ("country", country), ("ip", ip_address)]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
@@ -131,15 +132,16 @@ def is_valid_ip(ip_address: str):
 async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl"):
     match name:
         case ip_address if is_valid_ip(ip_address):
-            country = get_country(ip_address)
-            city = get_city(ip_address)
+            country = get_geo_info(ip_address, 'country')
+            city = get_geo_info(ip_address, 'city')
             plain_res = (f"\nip address: {ip_address} \n"
-                             f"country: {country} \n"
-                             f"city: {city} \n"
-                             f"url: https://ifconfig.icu/{ip_address}\n")
+                         f"country: {country} \n"
+                         f"city: {city} \n"
+                         f"url: https://ifconfig.icu/{ip_address}\n")
             if is_cli(request):
                 return PlainTextResponse(f"{plain_res}\n")
-            headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
+            headers_tuple = request.headers.items(
+            ) + [("city", city), ("country", country), ("ip", ip_address)]
             headers_json = {key: value for key, value in headers_tuple}
             context = {
                 "all": headers_json,
@@ -154,9 +156,9 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
             }
             return templates.TemplateResponse("index.html", context)
     ip_address = lookup_ip(request)
-    country = get_country(ip_address)
-    city = get_city(ip_address)
-    match name: 
+    country = get_geo_info(ip_address, 'country')
+    city = get_geo_info(ip_address, 'city')
+    match name:
         case "country":
             return PlainTextResponse(f"{country}\n")
         case "city":
@@ -164,7 +166,8 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
         case "ip":
             return PlainTextResponse(f"{ip_address}\n")
         case "all.json":
-            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+            headers_tuple = request.headers.items(
+            ) + [("city", city), ("country", country)]
             return JSONResponse({key: value for key, value in headers_tuple})
         case _:
             if dict(request.headers).get(f"{name}"):
@@ -175,10 +178,13 @@ async def custom_query(name: str, request: Request, cmd: Optional[str] = "curl")
 
 
 if __name__ == "__main__":
+    log_level = "info"
+    if bool(os.getenv("DEBUG")):
+        log_level = "debug"
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        log_level="info",
-        reload=True
+        log_level=log_level,
+        reload=True,
     )
