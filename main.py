@@ -13,8 +13,8 @@ from fastapi.templating import Jinja2Templates
 logger = logging.getLogger("uvicorn.error")
 
 try:
-    city_db_reader = geoip2.database.Reader('./GeoLite2-City.mmdb')
-    country_db_reader = geoip2.database.Reader('./GeoLite2-Country.mmdb')
+    city_db_reader = geoip2.database.Reader('./GeoLite.mmdb/GeoLite2-City.mmdb')
+    country_db_reader = geoip2.database.Reader('./GeoLite.mmdb/GeoLite2-Country.mmdb')
 except TypeError:
     logger.error('APP: Could not find MaxMind database\n')
     exit(1)
