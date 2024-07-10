@@ -10,3 +10,9 @@ __pycache__
 .github
 tools
 .git
+.vscode
+.dockerignore
+.gitmodules
+.gitignore
+GeoLite.mmdb/GeoLite2-ASN.mmdb
+GeoLite.mmdb/.git
