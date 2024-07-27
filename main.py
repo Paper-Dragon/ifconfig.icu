@@ -128,10 +128,7 @@ async def custom_query(request: Request, query_type: Optional[str] = None, ip_ad
     if not ip_address:
         ip_address = query_type
         query_type = None
-    print(f"query type: {query_type}")
-    print(f"ip address: {ip_address}")
     if ip_address and is_valid_ip(ip_address):
-        print(f"in ip address mode")
         if query_type:
             if query_type == "country":
                 country = get_geo_info(ip_address, 'country')
