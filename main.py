@@ -125,29 +125,31 @@ def is_valid_ip(ip_address: str):
 @app.get("/{query_type}")
 @app.get("/{ip_address}/{query_type}")
 async def custom_query(request: Request, query_type: Optional[str] = None, ip_address: Optional[str] = None, cmd: Optional[str] = "curl"):
-    if not ip_address:
+    if query_type and is_valid_ip(query_type):
+        # 处理 /ip_address 单个参数被当成 query_type的情况
         ip_address = query_type
         query_type = None
+
     if ip_address and is_valid_ip(ip_address):
+        # 处理特定IP地址的情况
+        country = get_geo_info(ip_address, 'country')
+        city = get_geo_info(ip_address, 'city')
+        
         if query_type:
             if query_type == "country":
-                country = get_geo_info(ip_address, 'country')
                 return PlainTextResponse(f"{country}\n")
             elif query_type == "city":
-                city = get_geo_info(ip_address, 'city')
                 return PlainTextResponse(f"{city}\n")
             else:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid query type")
         else:
-            country = get_geo_info(ip_address, 'country')
-            city = get_geo_info(ip_address, 'city')
             plain_res = (f"\nip address: {ip_address} \n"
                          f"country: {country} \n"
                          f"city: {city} \n"
                          f"url: https://ifconfig.icu/{ip_address}\n")
             if is_cli(request):
                 return PlainTextResponse(f"{plain_res}\n")
-            headers_tuple = request.headers.items() + [("city", city), ("country", country), ("ip", ip_address)]
+            headers_tuple = list(request.headers.items()) + [("city", city), ("country", country), ("ip", ip_address)]
             headers_json = {key: value for key, value in headers_tuple}
             context = {
                 "all": headers_json,
@@ -161,6 +163,8 @@ async def custom_query(request: Request, query_type: Optional[str] = None, ip_ad
                 "request": request
             }
             return templates.TemplateResponse("index.html", context)
+    
+    # 处理没有特定IP地址的情况
     ip_address = lookup_ip(request)
     country = get_geo_info(ip_address, 'country')
     city = get_geo_info(ip_address, 'city')
@@ -172,14 +176,13 @@ async def custom_query(request: Request, query_type: Optional[str] = None, ip_ad
         case "ip":
             return PlainTextResponse(f"{ip_address}\n")
         case "all.json":
-            headers_tuple = request.headers.items() + [("city", city), ("country", country)]
+            headers_tuple = list(request.headers.items()) + [("city", city), ("country", country)]
             return JSONResponse({key: value for key, value in headers_tuple})
         case _:
             if dict(request.headers).get(query_type):
                 return dict(request.headers).get(query_type)
             else:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found!",
-                                    headers={"X-Error": "Error"})
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found!", headers={"X-Error": "Error"})
 
 if __name__ == "__main__":
     log_level = "info"
