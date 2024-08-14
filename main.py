@@ -122,6 +122,15 @@ def is_valid_ip(ip_address: str):
         return False
 
 
+@app.head("/")
+async def root_head():
+    """
+    This endpoint is used to respond to Uptime Robot's monitoring checks.
+    It returns an empty response with HTTP status code 200 to indicate that the service is up and running.
+    """
+    return None
+
+
 @app.get("/{query_type}")
 @app.get("/{ip_address}/{query_type}")
 async def custom_query(request: Request, query_type: Optional[str] = None, ip_address: Optional[str] = None, cmd: Optional[str] = "curl"):
