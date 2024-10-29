@@ -21,6 +21,7 @@ jobs:
 
       - name: Update GeoLite.mmdb Submodule
         run: |
+          git config pull.ff only
           git submodule update --init --recursive
           cd GeoLite.mmdb
           git pull origin download || true
