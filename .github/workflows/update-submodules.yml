@@ -23,7 +23,7 @@ jobs:
         run: |
           git submodule update --init --recursive
           cd GeoLite.mmdb
-          git fetch origin download
+          git pull origin download || true
           git checkout download || (echo "Branch 'download' not found" && exit 1)
           git reset --hard origin/download
           cd ..
