@@ -5,7 +5,9 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'  # 每天UTC时间0:00执行
+    - cron: '0 0 * * *'
+
+  workflow_dispatch:
 
 jobs:
   update-submodules:
@@ -13,11 +15,16 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.2.2
+        with:
+          submodules: recursive
 
-      - name: Update Submodules
+      - name: Update Submodules to Remote Only
         run: |
-          git submodule update --remote --merge
+          git submodule foreach --recursive '
+            git fetch origin
+            git reset --hard origin/$(git branch --show-current)
+          '
           git add .
-          git commit -m "Update submodules"
-          git push
+          git commit -m "Update submodules to latest remote" || echo "No changes to commit"
+          git push origin main || echo "No changes to push"
