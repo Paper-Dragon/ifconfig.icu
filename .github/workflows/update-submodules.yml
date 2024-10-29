@@ -1,11 +1,13 @@
 name: Update Submodules
 
 on:
-  push:
+  pull_request:
     branches:
-      - main
+      - master
   schedule:
-    - cron: '0 0 * * *'  # 每天UTC时间0:00执行
+    - cron: '0 0 * * *'
+
+  workflow_dispatch:
 
 jobs:
   update-submodules:
@@ -13,11 +15,19 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.2.2
+        with:
+          submodules: recursive
 
-      - name: Update Submodules
+      - name: Update GeoLite.mmdb Submodule
         run: |
-          git submodule update --remote --merge
-          git add .
-          git commit -m "Update submodules"
-          git push
+          git submodule update --init --recursive
+          cd GeoLite.mmdb
+          git pull || true
+          git checkout download || echo "Branch 'download' not found"
+          git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
+          cd ..
+          git add GeoLite.mmdb
+          git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" || echo "No changes to commit"
+          git push origin main || echo "No changes to push"
+
