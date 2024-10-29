@@ -22,6 +22,7 @@ jobs:
       - name: Update Submodules to Remote Only
         run: |
           cd GeoLite.mmdb
+          git pull || true
           git reset --hard origin/download
           cd ..
           git commit -m "Update Submodule"
