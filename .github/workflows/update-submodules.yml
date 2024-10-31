@@ -24,8 +24,8 @@ jobs:
           git submodule sync
           git submodule update || true
           cd GeoLite.mmdb
-          git fetch origin download || true
-          git reset --hard origin download || (echo "Failed to reset to 'origin download'" && exit 1)
+          git fetch origin || true
+          git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
           cd ..
           git add GeoLite.mmdb
           git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" || echo "No changes to commit"
