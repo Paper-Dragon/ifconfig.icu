@@ -28,6 +28,7 @@ jobs:
           git status
           ls -la
           git fetch origin || true
+          git branch -a
           git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
           cd ..
           git add GeoLite.mmdb
