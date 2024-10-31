@@ -16,13 +16,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.2.2
-        with:
-          submodules: recursive
+        # with:
+        #   submodules: recursive
 
       - name: Update GeoLite.mmdb Submodule
         run: |
-          git submodule sync
-          git submodule update || true
+          git submodule update --init || true
           cd GeoLite.mmdb
           git branch -a
           git status
