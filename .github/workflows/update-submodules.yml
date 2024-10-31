@@ -29,9 +29,15 @@ jobs:
           git config --local user.email "2678885646@qq.com"
           git config --local user.name "PaperDragon-bot"
           git add GeoLite.mmdb
-          git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" || echo "No changes to commit"
+          git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" &> /dev/null
+          if [ $? -eq 0 ]; then
+            echo "::set-output name=changes::true"
+          else
+            echo "::set-output name=changes::false"
+          fi
       
       - name: Push changes
+        if: steps.update-submodule.outputs.changes == 'true'
         run: |
           git branch -a
           git status 
