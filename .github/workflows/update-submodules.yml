@@ -24,6 +24,9 @@ jobs:
           git submodule sync
           git submodule update || true
           cd GeoLite.mmdb
+          git branch -a
+          git status
+          ls -la
           git fetch origin || true
           git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
           cd ..
