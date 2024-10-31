@@ -33,6 +33,8 @@ jobs:
       
       - name: Push changes
         run: |
+          git branch -a
+          git status 
           if [ -n "${{ github.event.pull_request }}" ]; then
             git push origin ${{ github.head_ref }}
           else
