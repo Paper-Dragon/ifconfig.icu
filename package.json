@@ -9,6 +9,6 @@
     "update": "pnpm dlx vp-update"
   },
   "devDependencies": {
-    "wrangler": "^3.80.4"
+    "wrangler": "^4.24.3"
   }
 }

@@ -48,18 +48,43 @@ def lookup_ip(request: Request):
             res = "Unknown"
     return res
 
+import geoip2.errors
+
 def get_geo_info(ip_address, record_type):
     try:
         if record_type == 'city':
-            geo_info = city_db_reader.city(ip_address).city.names[language]
+            geo_info = city_db_reader.city(ip_address).city.names.get(language, 'City Not Found')
         elif record_type == 'country':
-            geo_info = country_db_reader.country(ip_address).country.names[language]
+            geo_info = country_db_reader.country(ip_address).country.names.get(language, 'Country Not Found')
         else:
             raise ValueError(f"Unsupported record type: {record_type}")
+    except geoip2.errors.AddressNotFoundError:
+        logger.warning(f"APP: IP address {ip_address} not found in {record_type} database.")
+        return f"信息未找到" # 简化用户看到的错误信息
     except Exception as e:
         logger.error(f"APP: Error looking up {record_type} for IP {ip_address}: {e}")
-        return f"Unable to retrieve the {record_type} information for the provided IP address. Please try again later or contact support if the issue persists."
+        return f"获取{record_type}信息失败" # 简化用户看到的错误信息
     return geo_info
+
+def _prepare_context(request: Request, ip_address, city, country, cmd_options):
+    plain_res = (f"\nip address: {ip_address} \n"
+                 f"country: {country} \n"
+                 f"city: {city} \n"
+                 f"url: https://ifconfig.icu/{ip_address} \n")
+    headers_tuple = list(request.headers.items()) + [("city", city), ("country", country), ("ip", ip_address)]
+    headers_json = {key: value for key, value in headers_tuple}
+    context = {
+        "all": headers_json,
+        "cmd": is_cli(request),
+        "cmd_with_options": mk_cmd(cmd_options),
+        "plain_res": plain_res.replace("\n", "<br>"),
+        "ip_address": ip_address,
+        "headers": headers_tuple,
+        "country": country,
+        "city": city,
+        "request": request
+    }
+    return context
 
 
 def is_cli(request: Request):
@@ -90,26 +115,9 @@ def index(request: Request, cmd: Optional[str] = "curl"):
     ip_address = lookup_ip(request)
     country = get_geo_info(ip_address, 'country')
     city = get_geo_info(ip_address, 'city')
-    plain_res = (f"\nip address: {ip_address} \n"
-                 f"country: {country} \n"
-                 f"city: {city} \n"
-                 f"url: https://ifconfig.icu/{ip_address} \n")
+    context = _prepare_context(request, ip_address, city, country, cmd)
     if is_cli(request):
-        return PlainTextResponse(f"{plain_res}\n")
-    headers_tuple = request.headers.items(
-    ) + [("city", city), ("country", country), ("ip", ip_address)]
-    headers_json = {key: value for key, value in headers_tuple}
-    context = {
-        "all": headers_json,
-        "cmd": is_cli(request),
-        "cmd_with_options": mk_cmd(cmd),
-        "plain_res": plain_res.replace("\n", "<br>"),
-        "ip_address": ip_address,
-        "headers": headers_tuple,
-        "country": country,
-        "city": city,
-        "request": request
-    }
+        return PlainTextResponse(f"{context['plain_res']}\n")
     return templates.TemplateResponse("index.html", context)
 
 
@@ -151,46 +159,35 @@ async def custom_query(request: Request, query_type: Optional[str] = None, ip_ad
             else:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid query type")
         else:
-            plain_res = (f"\nip address: {ip_address} \n"
-                         f"country: {country} \n"
-                         f"city: {city} \n"
-                         f"url: https://ifconfig.icu/{ip_address}\n")
+            context = _prepare_context(request, ip_address, city, country, cmd)
             if is_cli(request):
-                return PlainTextResponse(f"{plain_res}\n")
-            headers_tuple = list(request.headers.items()) + [("city", city), ("country", country), ("ip", ip_address)]
-            headers_json = {key: value for key, value in headers_tuple}
-            context = {
-                "all": headers_json,
-                "cmd": is_cli(request),
-                "cmd_with_options": mk_cmd(cmd),
-                "plain_res": plain_res.replace("\n", "<br>"),
-                "ip_address": ip_address,
-                "headers": headers_tuple,
-                "country": country,
-                "city": city,
-                "request": request
-            }
+                return PlainTextResponse(f"{context['plain_res']}\n")
             return templates.TemplateResponse("index.html", context)
-    
+
     # 处理没有特定IP地址的情况
     ip_address = lookup_ip(request)
     country = get_geo_info(ip_address, 'country')
     city = get_geo_info(ip_address, 'city')
-    match query_type:
-        case "country":
+    if query_type in ["country", "city", "ip"]:
+        if query_type == "country":
             return PlainTextResponse(f"{country}\n")
-        case "city":
+        elif query_type == "city":
             return PlainTextResponse(f"{city}\n")
-        case "ip":
+        elif query_type == "ip":
             return PlainTextResponse(f"{ip_address}\n")
-        case "all.json":
-            headers_tuple = list(request.headers.items()) + [("city", city), ("country", country)]
-            return JSONResponse({key: value for key, value in headers_tuple})
-        case _:
-            if dict(request.headers).get(query_type):
-                return dict(request.headers).get(query_type)
-            else:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found!", headers={"X-Error": "Error"})
+    elif query_type == "all.json":
+        headers_tuple = list(request.headers.items()) + [("city", city), ("country", country)]
+        return JSONResponse({key: value for key, value in headers_tuple})
+    elif query_type:
+        if dict(request.headers).get(query_type):
+            return PlainTextResponse(dict(request.headers).get(query_type) + "\n")
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found!", headers={"X-Error": "Error"})
+    else: # query_type is None, 返回 index 页面
+        context = _prepare_context(request, ip_address, city, country, cmd)
+        if is_cli(request):
+            return PlainTextResponse(f"{context['plain_res']}\n")
+        return templates.TemplateResponse("index.html", context)
 
 # if __name__ == "__main__":
 #     uvicorn.run(
