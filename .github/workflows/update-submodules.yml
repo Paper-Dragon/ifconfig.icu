@@ -21,10 +21,10 @@ jobs:
 
       - name: Update GeoLite.mmdb Submodule
         run: |
-          git submodule update --init --recursive
+          git submodule sync
+          git submodule update || true
           cd GeoLite.mmdb
-          git pull || true
-          git checkout download || echo "Branch 'download' not found"
+          git fetch origin download || true
           git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
           cd ..
           git add GeoLite.mmdb
