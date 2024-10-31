@@ -16,35 +16,28 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.2.2
-        # with:
-        #   submodules: recursive
 
-      - name: Update GeoLite.mmdb Submodule
+
+      - name: 更新 GeoLite.mmdb 子模块
         run: |
-          git submodule update --init || true
-          cd GeoLite.mmdb
-          git fetch origin || true
-          git reset --hard origin/download || (echo "Failed to reset to 'origin/download'" && exit 1)
-          cd ..
+          git submodule update --init --recursive GeoLite.mmdb || true
+          git -C GeoLite.mmdb fetch origin || true
+          git -C GeoLite.mmdb reset --hard origin/download || { echo "无法重置到 'origin/download'"; exit 1; }
+          
           git config --local user.email "2678885646@qq.com"
           git config --local user.name "PaperDragon-bot"
           git add GeoLite.mmdb
-          git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" &> /dev/null
-          if [ $? -eq 0 ]; then
-            echo "::set-output name=changes::true"
+          
+          # 检查是否有更改需要提交
+          if git diff --cached --exit-code > /dev/null; then
+            echo "没有更改，跳过提交和推送。"
           else
-            echo "::set-output name=changes::false"
-          fi
-      
-      - name: Push changes
-        if: steps.update-submodule.outputs.changes == 'true'
-        run: |
-          git branch -a
-          git status 
-          if [ -n "${{ github.event.pull_request }}" ]; then
-            git push origin ${{ github.head_ref }}
-          else
-            git push origin
+            git commit -m "更新 GeoLite.mmdb 子模块到最新的 'download' 分支" &> /dev/null
+            if [[ -n "${{ github.event.pull_request }}" ]]; then
+              git push origin "${{ github.event.pull_request.head.ref }}"
+            else
+              git push origin
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
