@@ -30,5 +30,15 @@ jobs:
           git config --local user.name "PaperDragon-bot"
           git add GeoLite.mmdb
           git commit -m "Update GeoLite.mmdb submodule to latest 'download' branch" || echo "No changes to commit"
-          git push origin ${{ github.ref }} || echo "No changes to push"
+      
+      - name: Push changes
+        run: |
+          if [ -n "${{ github.event.pull_request }}" ]; then
+            git push origin ${{ github.head_ref }}
+          else
+            git push origin
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
