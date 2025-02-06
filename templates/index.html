@@ -190,7 +190,7 @@
         <tbody>
         <tr>
             <td><code><span class="command">{{ cmd_with_options }}</span> ifconfig.icu</code></td>
-            <td class="response">{{ plain_res | safe}}</td>
+            <td class="response">{{ plain_res|replace('\n', '<br>') | safe}}</td>
         </tr>
         {% if headers %}
 
