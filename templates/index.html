@@ -19,6 +19,77 @@
     gtag('config', 'G-CVL085KLMV');
     </script>
 
+    <script>
+        const translations = {
+            en: {
+                title: "What is my IP address?",
+                yourIp: "Your IP:",
+                curlBtn: "curl",
+                wgetBtn: "wget",
+                fetchBtn: "fetch",
+                cmdRes: {
+                    curl: "curl ifconfig.icu",
+                    wget: "wget ifconfig.icu",
+                    fetch: "fetch ifconfig.icu"
+                },
+                commandHeader: "Command",
+                responseHeader: "Response",
+                description: "What is my IP address?"
+            },
+            zh: {
+                title: "我的IP地址是什么？",
+                yourIp: "您的IP地址：",
+                curlBtn: "curl",
+                wgetBtn: "wget",
+                fetchBtn: "fetch",
+                cmdRes: {
+                    curl: "curl ifconfig.icu",
+                    wget: "wget ifconfig.icu",
+                    fetch: "fetch ifconfig.icu"
+                },
+                commandHeader: "命令",
+                responseHeader: "响应",
+                description: "我的IP地址是什么？"
+            }
+            // 可以在这里添加更多的语言翻译
+        };
+
+        function setLanguageContent() {
+            const userLang = navigator.language || navigator.userLanguage;
+            const lang = userLang.substring(0, 2); // 获取前两个字符，例如 'en-US' 变为 'en'
+            const defaultLang = translations[lang] ? lang : 'en'; // 默认为英文
+
+            // Update title
+            document.title = translations[defaultLang].title;
+            document.getElementById('title').textContent = translations[defaultLang].title;
+            document.getElementById('your-ip').textContent = translations[defaultLang].yourIp;
+            document.getElementById('curl-btn').textContent = translations[defaultLang].curlBtn;
+            document.getElementById('wget-btn').textContent = translations[defaultLang].wgetBtn;
+            document.getElementById('fetch-btn').textContent = translations[defaultLang].fetchBtn;
+
+            // Update command responses
+            const commands = document.querySelectorAll('.command');
+            commands.forEach(command => {
+                const cmdText = command.textContent.trim();
+                if (translations[defaultLang].cmdRes[cmdText]) {
+                    command.textContent = translations[defaultLang].cmdRes[cmdText];
+                }
+            });
+
+            // Update table headers
+            document.querySelector('th:first-child').textContent = translations[defaultLang].commandHeader;
+            document.querySelector('th:last-child').textContent = translations[defaultLang].responseHeader;
+
+            // Update meta description
+            const metaDescription = document.querySelector('meta[name="description"]');
+            if (metaDescription) {
+                metaDescription.setAttribute('content', translations[defaultLang].description);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', setLanguageContent);
+    </script>
+
     <style>
         body {
             font-family: "Oswald", sans-serif;
@@ -101,13 +172,13 @@
 </a>
 <div class="content">
     <div id="wrapper">
-        <h1>What is my IP address?</h1>
-        <h2>Your IP:</h2>
+        <h1 id="title"></h1>
+            <h2 id="your-ip"></h2>
         <p><code class="ip">{{ ip_address }}</code></p>
-        <a href="?cmd=curl" class="pure-button{% if cmd == "curl" %} pure-button-active pure-button-primary{% endif %}">curl</a>
-        <a href="?cmd=wget" class="pure-button{% if cmd == "wget" %} pure-button-active pure-button-primary{% endif %}">wget</a>
+        <a href="?cmd=curl" class="pure-button{% if cmd == "curl" %} pure-button-active pure-button-primary{% endif %}" id="curl-btn">curl</a>
+        <a href="?cmd=wget" class="pure-button{% if cmd == "wget" %} pure-button-active pure-button-primary{% endif %}" id="wget-btn">wget</a>
         <a href="?cmd=fetch"
-           class="pure-button{% if cmd == "fetch" %} pure-button-active pure-button-primary{% endif %}">fetch</a>
+           class="pure-button{% if cmd == "fetch" %} pure-button-active pure-button-primary{% endif %}" id="fetch-btn">fetch</a>
     </div>
     <table class="pure-table pure-table-bordered pure-table-striped">
         <thead>
