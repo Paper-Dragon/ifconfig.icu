@@ -54,9 +54,9 @@ import geoip2.errors
 def get_geo_info(ip_address, record_type):
     try:
         if record_type == 'city':
-            geo_info = city_db_reader.city(ip_address).city.names.get(language, 'en') # 使用get方法并提供默认值
+            geo_info = city_db_reader.city(ip_address).city.names.get(language, 'City Not Found')
         elif record_type == 'country':
-            geo_info = country_db_reader.country(ip_address).country.names.get(language, 'en') # 使用get方法并提供默认值
+            geo_info = country_db_reader.country(ip_address).country.names.get(language, 'Country Not Found')
         else:
             raise ValueError(f"Unsupported record type: {record_type}")
     except geoip2.errors.AddressNotFoundError:
