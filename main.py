@@ -68,17 +68,17 @@ def get_geo_info(ip_address, record_type):
     return geo_info
 
 def _prepare_context(request: Request, ip_address, city, country, cmd_options):
-    plain_res = (f"\nip address: {ip_address} \n"
+    plain_res = (f"ip address: {ip_address} \n"
                  f"country: {country} \n"
                  f"city: {city} \n"
-                 f"url: https://ifconfig.icu/{ip_address} \n")
+                 f"url: https://ifconfig.icu/{ip_address}\n")
     headers_tuple = list(request.headers.items()) + [("city", city), ("country", country), ("ip", ip_address)]
     headers_json = {key: value for key, value in headers_tuple}
     context = {
         "all": headers_json,
         "cmd": is_cli(request),
         "cmd_with_options": mk_cmd(cmd_options),
-        "plain_res": plain_res.replace("\n", "<br>"),
+        "plain_res": plain_res,
         "ip_address": ip_address,
         "headers": headers_tuple,
         "country": country,
@@ -118,7 +118,7 @@ def index(request: Request, cmd: Optional[str] = "curl"):
     city = get_geo_info(ip_address, 'city')
     context = _prepare_context(request, ip_address, city, country, cmd)
     if is_cli(request):
-        return PlainTextResponse(f"{context['plain_res']}\n")
+        return PlainTextResponse(f"{context['plain_res']}")
     return templates.TemplateResponse("index.html", context)
 
 
