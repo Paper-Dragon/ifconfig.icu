@@ -1,0 +1,14 @@
+{
+  "name": "ifconfig-icu",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "update": "pnpm dlx vp-update"
+  },
+  "devDependencies": {
+    "wrangler": "^4.24.3"
+  }
+}
